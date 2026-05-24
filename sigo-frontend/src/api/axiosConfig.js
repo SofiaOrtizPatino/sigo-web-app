@@ -1,28 +1,33 @@
 import axios from 'axios';
 
-const sigoApi = axios.create({
+const sigaiApi = axios.create({
   baseURL: 'http://localhost:4000/api',
-  timeout: 10000,
+  timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Agrega el token JWT en cada petición saliente
-sigoApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('sigo_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+// Agrega el JWT en cada petición saliente
+sigaiApi.interceptors.request.use((config) => {
+  const sesion = JSON.parse(localStorage.getItem('sigai_sesion'));
+  if (sesion?.token) config.headers.Authorization = `Bearer ${sesion.token}`;
   return config;
 });
 
-// Manejo centralizado de errores
-sigoApi.interceptors.response.use(
+// Maneja errores de autenticación y autorización de forma centralizada
+sigaiApi.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('sigo_token');
+      // Token vencido: cierra sesión y redirige al login
+      localStorage.removeItem('sigai_sesion');
       window.location.href = '/login';
+    }
+    if (error.response?.status === 403) {
+      // El rol del funcionario no tiene permiso para esta operación
+      return Promise.reject({ mensaje: 'No tiene permisos para esta acción' });
     }
     return Promise.reject(error.response?.data || error.message);
   }
 );
 
-export default sigoApi;
+export default sigaiApi;
